@@ -1,21 +1,16 @@
 from quantumGA import QuantumGA
 from preproc import Preprocessor
 from rouge import Rouge
-
-from os import listdir, mkdir
-from os.path import (
-    join,
-    isdir,
-    exists
-)
-
+import os
 
 file_list = [
     '001.txt',
     '002.txt',
     '003.txt',
     '004.txt',
-    '005.txt',
+    '007.txt',
+    '008.txt',
+    '012.txt',
 ]
 
 rouge_1_r_arr = []
@@ -30,22 +25,70 @@ rouge_l_r_arr = []
 rouge_l_p_arr = []
 rouge_l_f_arr = []
 
-for file_last_name in file_list:
-    file_name = r'.\data\bbc_news_data\article\business'+'\\'+file_last_name
-    file = open(file_name)
-    doc_title = file.readline()
-    print()
-    print("doc_title = ", doc_title)
-    file.readline()
-    text = file.read()
-    # print("text = ", text)
-    file.close()
+category = 'business'
 
-    file_name = r'.\data\bbc_news_data\summaries\business'+'\\'+file_last_name
-    file = open(file_name)
-    ref_summary = file.read()
-    # print("ref_summary = ", ref_summary)
-    file.close()
+data = {
+        'article': '',
+        'summaries': '',
+        'titles': '',
+    }
+
+data_list = []
+
+# article_path = './new_data/article/'+category+'/'
+# summaries_path = './new_data/summaries/'+category+'/'
+# titles_path = './new_data/titles/'+category+'/'
+
+# for filename in os.listdir(article_path):
+#     # Read the contents of the file
+#     with open(os.path.join(article_path, filename), 'r', encoding='utf-8') as f:
+#         content = f.read().strip()
+#         data['article'] = content
+
+# for filename in os.listdir(summaries_path):
+#     # Read the contents of the file
+#     with open(os.path.join(summaries_path, filename), 'r', encoding='utf-8') as f:
+#         content = f.read().strip()
+#         data['summaries'] = content
+
+# for filename in os.listdir(titles_path):
+#     print("filename = ", filename)
+#     # Read the contents of the file
+#     with open(os.path.join(titles_path, filename), 'r', encoding='utf-8') as f:
+#         content = f.read().strip()
+#         data['titles'] = content
+
+#     data_list.append(data.copy())
+
+article_path = './data/bbc_news_data/article/' + category + '/'
+summaries_path = './data/bbc_news_data/summaries/' + category + '/'
+
+for filename in os.listdir(article_path):
+    # Read the contents of the file
+    with open(os.path.join(article_path, filename), 'r', encoding='utf-8') as f:
+        data['file_name'] = filename
+        data['titles'] = f.readline()
+        f.readline()
+        content = f.read().strip()
+        data['article'] = content
+    
+    # Read the contents of the file
+    with open(os.path.join(summaries_path, filename), 'r', encoding='utf-8') as f:
+        content = f.read().strip()
+        data['summaries'] = content
+
+    data_list.append(data.copy())
+
+
+for data in data_list[:50]:
+    text = data['article']
+    ref_summary = data['summaries']
+    doc_title = data['titles']
+
+    print("working on file: ", data['file_name'])
+    # print( "text = ", text)
+    # print( "ref_summary = ", ref_summary)
+    # print( "doc_title = ", doc_title)
 
     preProc = Preprocessor()
     preProc.preprocessing_text(text)
@@ -65,7 +108,8 @@ for file_last_name in file_list:
 
     quantumGA.tfisf_cosineSim_Calculate()
     quantumGA.cosineSimWithTitle(preproc_doc_title)
-    designed_sizes = [int(preProc.sentencesNum/4)]
+    # designed_sizes = [int(preProc.sentencesNum/2)]'
+    designed_sizes = [int((((preProc.sentencesNum - 6) / 42) * 50) + 50)]
 
     for i in range(len(designed_sizes)):
         pop_size = designed_sizes[i]
@@ -86,12 +130,10 @@ for file_last_name in file_list:
         generation = 1
         fitness_change = 0  # The number of consecutive generation that fitness has not changed
         while fitness_change < 20 and generation < 500:
-            mating_pool = quantumGA.rouletteWheel(
-                quantum_pop, pop_size)
-            # q_offsprings = quantumGA.twoPointCrossover(mating_pool)
-            # q_offsprings = quantumGA.singlePointCrossover(mating_pool)
-            q_offsprings = quantumGA.uniformCrossover(mating_pool)
-            quantumGA.cusMutation(q_offsprings)
+            mating_pool = quantumGA.boltzmann_selection(
+                quantum_pop, pop_size,25)
+            q_offsprings = quantumGA.twoPointCrossover(mating_pool)
+            quantumGA.flipMutation(q_offsprings)
             for offspring in q_offsprings:
                 if not offspring.fitness.valid:
                     quantumGA.indivMeasure(offspring)
@@ -117,6 +159,7 @@ for file_last_name in file_list:
                 finalSummLen += len(quantumGA.tokens[i])
                 summary += '{}\n'.format(preProc.splitedSent[i])
         summary = summary.rstrip()
+        ref_summary = ref_summary.rstrip()
 
         print("summary = ", summary)
 

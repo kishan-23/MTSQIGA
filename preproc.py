@@ -26,23 +26,6 @@ class Preprocessor:
 
     def preprocessing_text(self, text):
         tokenizer = load('tokenizers/punkt/english.pickle')
-        extra_abbreviation = {
-            'a.m', 'p.m', 'ch', 'mr', 'mrs', 'prof', 'st', 'jan', 'conn', 'ariz',
-            'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec',
-            'then-gov', 'sgt', 'w.h', 'gov', 'u.s', 'maj', 'gen', 'no', 'd', 'etc',
-            'fig', 'dept', 'ave', 'law', 'd.a', 'i.e', 'u.n', 's.c', 'c.h', 'b.b',
-            'e.g', 'c.o', 'b.c', 'm.n', 'j.d', 'm.p.h', 'n.y', 'e.d', 'n.w', 'i.d',
-            'k.b', 'l.a', 'l.e', 'c.j', 'u.s.a', 'd.c', 'k.c', 'n.c', 'p.o', 'f.d.r',
-            'r.i', 'c.k', 'b.s', 'n.j', 'v.m.d', 't.q', 'l.o', 'Ph.d', 'k.l', 'e.t',
-            'o.c', 'rep', 'rey', 'sen', 'atty', 'col', 'corp', 'co', 'inc', 'ft',
-            'ind', 'r', 'jr', 'd-md', 'd-fla', 'd-tex', 'd-wash', 'd-mich', 'd-calif',
-            'd-n.y', 'd-wis', 'd-nev', 'd-ga', 'lt', 'dr', 's', 'mt', 'u', 's', 'blm',
-            'r-Calif', 'r-ill', 'r-fla', 'rev', 'f', 'm', 'w', 'a', 'mg', 'sr', 'lbs',
-            'ltd', 'vs', 'ga', 'cos', 'ore', 'va', 'md', 'pa', 'fla', 'ida', 'capt',
-            'adm', 'assn', 'blvd', 'kent', 'supt', 'cmdr', 'Msgr', 'bros', 'mich',
-            'dist', 'mass', 'reps', 'colo', 'asst', 'prop', 'sat'
-        }
-        tokenizer._params.abbrev_types.update(extra_abbreviation)
 
         tokenized_sents = tokenizer.tokenize(text)
 #         print(tokenized_sents)
@@ -58,16 +41,7 @@ class Preprocessor:
         self.tokens = []
         punctuations = list(string.punctuation)
         punctuations.extend(["\'\'", "\"", "``", "--"])
-        TreebankWordTokenizer.PUNCTUATION = [
-            (re.compile(r'([:,])([^\d])'), r' \1 \2'),
-            (re.compile(r'([:,])$'), r' \1 '),
-            (re.compile(r'\.\.\.'), r' ... '),
-            (re.compile(r'[;@#$%]'), r' \g<0> '),
-            # Handles the final period.
-            (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
-            (re.compile(r'[?!]'), r' \g<0> '),
-            (re.compile(r"([^'])' "), r"\1 ' "),
-        ]
+
         _index = []
 
         for i in range(len(tokenized_sents)):
@@ -131,16 +105,6 @@ class Preprocessor:
         tokens = []
         punctuations = list(string.punctuation)
         punctuations.extend(["\'\'", "\"", "``", "--"])
-        TreebankWordTokenizer.PUNCTUATION = [
-            (re.compile(r'([:,])([^\d])'), r' \1 \2'),
-            (re.compile(r'([:,])$'), r' \1 '),
-            (re.compile(r'\.\.\.'), r' ... '),
-            (re.compile(r'[;@#$%]'), r' \g<0> '),
-            # Handles the final period.
-            (re.compile(r'([^\.])(\.)([\]\)}>"\']*)\s*$'), r'\1 \2\3 '),
-            (re.compile(r'[?!]'), r' \g<0> '),
-            (re.compile(r"([^'])' "), r"\1 ' "),
-        ]
 
         for i in range(len(titles_list)):
             _titleWords = [word.lower() for word in word_tokenize(

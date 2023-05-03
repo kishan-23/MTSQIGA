@@ -1,22 +1,8 @@
 from quantumGA import QuantumGA
 from preproc import Preprocessor
 from rouge import Rouge
-
-from os import listdir, mkdir
-from os.path import (
-    join,
-    isdir,
-    exists
-)
-
-
-file_list = [
-    '001.txt',
-    '002.txt',
-    '003.txt',
-    '004.txt',
-    '005.txt',
-]
+import os
+import time
 
 rouge_1_r_arr = []
 rouge_1_p_arr = []
@@ -30,22 +16,49 @@ rouge_l_r_arr = []
 rouge_l_p_arr = []
 rouge_l_f_arr = []
 
-for file_last_name in file_list:
-    file_name = r'.\data\bbc_news_data\article\business'+'\\'+file_last_name
-    file = open(file_name)
-    doc_title = file.readline()
-    print()
-    print("doc_title = ", doc_title)
-    file.readline()
-    text = file.read()
-    # print("text = ", text)
-    file.close()
+time_arr = []
 
-    file_name = r'.\data\bbc_news_data\summaries\business'+'\\'+file_last_name
-    file = open(file_name)
-    ref_summary = file.read()
-    # print("ref_summary = ", ref_summary)
-    file.close()
+category = 'business'
+
+data = {
+        'article': '',
+        'summaries': '',
+        'titles': '',
+    }
+
+data_list = []
+
+article_path = './data/bbc_news_data/article/' + category + '/'
+summaries_path = './data/bbc_news_data/summaries/' + category + '/'
+
+for filename in os.listdir(article_path):
+    # Read the contents of the file
+    with open(os.path.join(article_path, filename), 'r', encoding='utf-8') as f:
+        data['file_name'] = filename
+        data['titles'] = f.readline()
+        f.readline()
+        content = f.read().strip()
+        data['article'] = content
+    
+    # Read the contents of the file
+    with open(os.path.join(summaries_path, filename), 'r', encoding='utf-8') as f:
+        content = f.read().strip()
+        data['summaries'] = content
+
+    data_list.append(data.copy())
+
+
+for data in data_list[:10]:
+    text = data['article']
+    ref_summary = data['summaries']
+    doc_title = data['titles']
+
+
+    print("working on file: ", data['file_name'])
+    # print( "text = ", text)
+    # print( "ref_summary = ", ref_summary)
+    # print( "doc_title = ", doc_title)
+    start_time = time.process_time()
 
     preProc = Preprocessor()
     preProc.preprocessing_text(text)
@@ -65,7 +78,8 @@ for file_last_name in file_list:
 
     quantumGA.tfisf_cosineSim_Calculate()
     quantumGA.cosineSimWithTitle(preproc_doc_title)
-    designed_sizes = [int(preProc.sentencesNum/4)]
+    # designed_sizes = [int(preProc.sentencesNum/2)]'
+    designed_sizes = [int((((preProc.sentencesNum - 6) / 42) * 50) + 50)]
 
     for i in range(len(designed_sizes)):
         pop_size = designed_sizes[i]
@@ -79,28 +93,26 @@ for file_last_name in file_list:
         for q_indiv in quantum_pop:
             # print()
             # print("q_indiv = ", q_indiv.binary)
-            quantumGA.evalFitness3(q_indiv)
+            quantumGA.evalFitness4(q_indiv)
 
         best_indiv = quantumGA.bestIndividual(quantum_pop)
         # print("best_indiv = ", best_indiv.binary)
         generation = 1
         fitness_change = 0  # The number of consecutive generation that fitness has not changed
         while fitness_change < 20 and generation < 500:
-            mating_pool = quantumGA.rouletteWheel(
-                quantum_pop, pop_size)
-            # q_offsprings = quantumGA.twoPointCrossover(mating_pool)
-            # q_offsprings = quantumGA.singlePointCrossover(mating_pool)
-            q_offsprings = quantumGA.uniformCrossover(mating_pool)
-            quantumGA.cusMutation(q_offsprings)
+            mating_pool = quantumGA.boltzmann_selection(
+                quantum_pop, pop_size,25)
+            q_offsprings = quantumGA.twoPointCrossover(mating_pool)
+            quantumGA.flipMutation(q_offsprings)
             for offspring in q_offsprings:
                 if not offspring.fitness.valid:
                     quantumGA.indivMeasure(offspring)
-                    quantumGA.evalFitness3(offspring)
+                    quantumGA.evalFitness4(offspring)
             new_qOffsprings = quantumGA.rotationGate(
                 q_offsprings, best_indiv)
             quantumGA.measurement(new_qOffsprings)
             for q_indiv in new_qOffsprings:
-                quantumGA.evalFitness3(q_indiv)
+                quantumGA.evalFitness4(q_indiv)
             new_qPop = quantumGA.bestReplacement(
                 quantum_pop, new_qOffsprings)
             best_indiv = quantumGA.bestIndividual(new_qPop)
@@ -117,6 +129,11 @@ for file_last_name in file_list:
                 finalSummLen += len(quantumGA.tokens[i])
                 summary += '{}\n'.format(preProc.splitedSent[i])
         summary = summary.rstrip()
+        ref_summary = ref_summary.rstrip()
+
+        end_time = time.process_time()
+
+        time_taken = (end_time - start_time)*1000
 
         print("summary = ", summary)
 
@@ -125,6 +142,7 @@ for file_last_name in file_list:
         scores = rouge.get_scores(summary, ref_summary)
         print("scores = ", scores)
         print()
+        print("time_taken = ", time_taken, "ms")
 
         rouge_1_r_arr.append(scores[0]['rouge-1']['r'])
         rouge_1_p_arr.append(scores[0]['rouge-1']['p'])
@@ -137,6 +155,8 @@ for file_last_name in file_list:
         rouge_l_r_arr.append(scores[0]['rouge-l']['r'])
         rouge_l_p_arr.append(scores[0]['rouge-l']['p'])
         rouge_l_f_arr.append(scores[0]['rouge-l']['f'])
+
+        time_arr.append(time_taken)
 
 
 # Calculating average scores
@@ -152,6 +172,8 @@ avg_rouge_2_f = sum(rouge_2_f_arr)/len(rouge_2_f_arr)
 avg_rouge_l_r = sum(rouge_l_r_arr)/len(rouge_l_r_arr)
 avg_rouge_l_p = sum(rouge_l_p_arr)/len(rouge_l_p_arr)
 avg_rouge_l_f = sum(rouge_l_f_arr)/len(rouge_l_f_arr)
+
+avg_time = sum(time_arr)/len(time_arr)
 
 # avg_scores = {
 #     'avg_rouge_1_r': avg_rouge_1_r,
@@ -178,3 +200,5 @@ print('avg_rouge_2_f = ', avg_rouge_2_f)
 print('avg_rouge_l_r = ', avg_rouge_l_r)
 print('avg_rouge_l_p = ', avg_rouge_l_p)
 print('avg_rouge_l_f = ', avg_rouge_l_f)
+
+print('avg_time = ', avg_time, 'ms')

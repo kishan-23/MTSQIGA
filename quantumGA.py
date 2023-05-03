@@ -8,7 +8,8 @@ from sklearn.metrics.pairwise import linear_kernel
 from deap import base, creator
 from copy import deepcopy
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
 import numpy as np
 
 
@@ -127,7 +128,64 @@ class QuantumGA:
                     docTerm_matrix[:1], docTerm_matrix[1:])
                 self.cosineSim_with_title[0][i] = sum(cosineSim_each_sent[0])
 
-    
+
+    def evalFitness4(self, q_indiv):
+        self.discoverSlope = -0.625
+        summary = []
+        summary_words = set()
+        summary_word_freq = {}
+        summary_len = 0
+        sum_of_most_freq_words = 0
+        num_selected_sent = 0
+        word_freq_metric = 0
+        sent_position = 0
+        sent_length_metric = 0
+        cosine_similarity = 0
+
+        # Select sentences for summary and compute word frequency metrics
+        for i in range(len(q_indiv.binary)):
+            if q_indiv.binary[i] == 1:
+                num_selected_sent += 1
+                summary.append(self.preprocSentences[i])
+                for word in self.stemmedTokens[i]:
+                    summary_words.add(word)
+                    if word in summary_word_freq:
+                        summary_word_freq[word] += 1
+                    else:
+                        summary_word_freq[word] = 1
+
+        # Compute word frequency metric
+        sum_of_summary_word_freq = sum(summary_word_freq.values())
+        if sum_of_summary_word_freq > 0:
+            sum_of_most_freq_words = sum([freq for word, freq in self.distWordFreq.most_common(len(summary_word_freq))])
+            word_freq_metric = sum_of_summary_word_freq / sum_of_most_freq_words
+
+        # Compute sentence position metric
+        n = len(q_indiv.binary)
+        if num_selected_sent > 0:
+            sent_positions = [i for i in range(n) if q_indiv.binary[i] == 1]
+            x = (n + 1) / 2
+            sent_position = sum([(i+1-x)*self.discoverSlope + x for i in sent_positions]) / num_selected_sent
+
+        # Compute sentence length metric
+        summary_lengths = [len(self.stemmedTokens[i]) for i in range(len(q_indiv.binary)) if q_indiv.binary[i] == 1]
+        longest_summary_length = max(summary_lengths) if summary_lengths else 1
+        sent_length_metric = sum(summary_lengths) / (num_selected_sent * longest_summary_length)
+
+        # Compute cosine similarity metric
+        new_vectorizer = TfidfVectorizer(token_pattern=r"(?u)\b\w+\b", min_df=1, smooth_idf=False)
+        docTerm_matrix = new_vectorizer.fit_transform(summary)
+        cosineSim_summaryMatrix = linear_kernel(docTerm_matrix, docTerm_matrix)
+        in_sentence_cosineSim = sum([sum(cosineSim_summaryMatrix[j])-cosineSim_summaryMatrix[j, j]
+                                    for j in range(cosineSim_summaryMatrix.shape[0])])
+        title_cosineSim = self.cosineSim_with_title[0, q_indiv.binary].sum()
+        cosine_similarity = self.weight1 * (in_sentence_cosineSim - cosineSim_summaryMatrix.sum()) + self.weight2 * title_cosineSim
+
+        # Compute fitness
+        fitness = (0.6 * cosine_similarity + 0.4 * sent_length_metric) * (word_freq_metric * sent_position)
+
+        q_indiv.fitness.values = (fitness,)
+
     
     def evalFitness3(self, q_indiv):
         self.discoverSlope = -0.625

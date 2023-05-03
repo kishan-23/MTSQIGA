@@ -2,16 +2,7 @@ from quantumGA import QuantumGA
 from preproc import Preprocessor
 from rouge import Rouge
 import os
-
-file_list = [
-    '001.txt',
-    '002.txt',
-    '003.txt',
-    '004.txt',
-    '007.txt',
-    '008.txt',
-    '012.txt',
-]
+import time
 
 rouge_1_r_arr = []
 rouge_1_p_arr = []
@@ -25,6 +16,8 @@ rouge_l_r_arr = []
 rouge_l_p_arr = []
 rouge_l_f_arr = []
 
+time_arr = []
+
 category = 'business'
 
 data = {
@@ -34,31 +27,6 @@ data = {
     }
 
 data_list = []
-
-# article_path = './new_data/article/'+category+'/'
-# summaries_path = './new_data/summaries/'+category+'/'
-# titles_path = './new_data/titles/'+category+'/'
-
-# for filename in os.listdir(article_path):
-#     # Read the contents of the file
-#     with open(os.path.join(article_path, filename), 'r', encoding='utf-8') as f:
-#         content = f.read().strip()
-#         data['article'] = content
-
-# for filename in os.listdir(summaries_path):
-#     # Read the contents of the file
-#     with open(os.path.join(summaries_path, filename), 'r', encoding='utf-8') as f:
-#         content = f.read().strip()
-#         data['summaries'] = content
-
-# for filename in os.listdir(titles_path):
-#     print("filename = ", filename)
-#     # Read the contents of the file
-#     with open(os.path.join(titles_path, filename), 'r', encoding='utf-8') as f:
-#         content = f.read().strip()
-#         data['titles'] = content
-
-#     data_list.append(data.copy())
 
 article_path = './data/bbc_news_data/article/' + category + '/'
 summaries_path = './data/bbc_news_data/summaries/' + category + '/'
@@ -80,15 +48,17 @@ for filename in os.listdir(article_path):
     data_list.append(data.copy())
 
 
-for data in data_list[:50]:
+for data in data_list[:10]:
     text = data['article']
     ref_summary = data['summaries']
     doc_title = data['titles']
+
 
     print("working on file: ", data['file_name'])
     # print( "text = ", text)
     # print( "ref_summary = ", ref_summary)
     # print( "doc_title = ", doc_title)
+    start_time = time.process_time()
 
     preProc = Preprocessor()
     preProc.preprocessing_text(text)
@@ -123,7 +93,7 @@ for data in data_list[:50]:
         for q_indiv in quantum_pop:
             # print()
             # print("q_indiv = ", q_indiv.binary)
-            quantumGA.evalFitness3(q_indiv)
+            quantumGA.evalFitness4(q_indiv)
 
         best_indiv = quantumGA.bestIndividual(quantum_pop)
         # print("best_indiv = ", best_indiv.binary)
@@ -137,12 +107,12 @@ for data in data_list[:50]:
             for offspring in q_offsprings:
                 if not offspring.fitness.valid:
                     quantumGA.indivMeasure(offspring)
-                    quantumGA.evalFitness3(offspring)
+                    quantumGA.evalFitness4(offspring)
             new_qOffsprings = quantumGA.rotationGate(
                 q_offsprings, best_indiv)
             quantumGA.measurement(new_qOffsprings)
             for q_indiv in new_qOffsprings:
-                quantumGA.evalFitness3(q_indiv)
+                quantumGA.evalFitness4(q_indiv)
             new_qPop = quantumGA.bestReplacement(
                 quantum_pop, new_qOffsprings)
             best_indiv = quantumGA.bestIndividual(new_qPop)
@@ -161,6 +131,10 @@ for data in data_list[:50]:
         summary = summary.rstrip()
         ref_summary = ref_summary.rstrip()
 
+        end_time = time.process_time()
+
+        time_taken = (end_time - start_time)*1000
+
         print("summary = ", summary)
 
         # Checking summary scores
@@ -168,6 +142,7 @@ for data in data_list[:50]:
         scores = rouge.get_scores(summary, ref_summary)
         print("scores = ", scores)
         print()
+        print("time_taken = ", time_taken, "ms")
 
         rouge_1_r_arr.append(scores[0]['rouge-1']['r'])
         rouge_1_p_arr.append(scores[0]['rouge-1']['p'])
@@ -180,6 +155,8 @@ for data in data_list[:50]:
         rouge_l_r_arr.append(scores[0]['rouge-l']['r'])
         rouge_l_p_arr.append(scores[0]['rouge-l']['p'])
         rouge_l_f_arr.append(scores[0]['rouge-l']['f'])
+
+        time_arr.append(time_taken)
 
 
 # Calculating average scores
@@ -195,6 +172,8 @@ avg_rouge_2_f = sum(rouge_2_f_arr)/len(rouge_2_f_arr)
 avg_rouge_l_r = sum(rouge_l_r_arr)/len(rouge_l_r_arr)
 avg_rouge_l_p = sum(rouge_l_p_arr)/len(rouge_l_p_arr)
 avg_rouge_l_f = sum(rouge_l_f_arr)/len(rouge_l_f_arr)
+
+avg_time = sum(time_arr)/len(time_arr)
 
 # avg_scores = {
 #     'avg_rouge_1_r': avg_rouge_1_r,
@@ -221,3 +200,5 @@ print('avg_rouge_2_f = ', avg_rouge_2_f)
 print('avg_rouge_l_r = ', avg_rouge_l_r)
 print('avg_rouge_l_p = ', avg_rouge_l_p)
 print('avg_rouge_l_f = ', avg_rouge_l_f)
+
+print('avg_time = ', avg_time, 'ms')
